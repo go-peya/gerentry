@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f8fc">
+  <title>Rentry — Gestor de enlaces</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: {
+          ink: "#061b31", muted: "#50617a", brand: "#533afd",
+          line: "#dce4ee", canvas: "#f6f8fc", soft: "#e3ecf7"
+        },
+        fontFamily: { sans: ['"Inter"', '"SF Pro Display"', "system-ui", "sans-serif"] },
+        boxShadow: { panel: "0 1px 2px rgba(6,27,49,.04), 0 8px 28px rgba(6,27,49,.045)" }
+      }}
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { font-family: Inter, system-ui, sans-serif; font-weight: 400; }
+    button, input, textarea, select { font: inherit; }
+    :focus-visible { outline: 3px solid rgba(83,58,253,.42); outline-offset: 2px; }
+    .icon { width: 17px; height: 17px; flex: none; }
+    .tag-button[aria-pressed="true"] { color:#fff; background:#533afd; border-color:#533afd; }
+    .dialog-backdrop { background: rgba(6,27,49,.42); backdrop-filter: blur(4px); }
+    dialog { border:0; padding:0; }
+    dialog::backdrop { background: rgba(6,27,49,.42); backdrop-filter: blur(4px); }
+    .field { width:100%; border:1px solid #dce4ee; border-radius:9px; background:#fff; padding:10px 12px; color:#061b31; }
+    .field:hover { border-color:#aab8ca; }
+    .field:focus { border-color:#533afd; outline:3px solid rgba(83,58,253,.12); }
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:38px; padding:8px 12px; border:1px solid #dce4ee; border-radius:9px; color:#33465d; background:#fff; font-size:13px; font-weight:500; transition:background .18s,border-color .18s,color .18s; }
+    .btn:hover { background:#f6f8fc; border-color:#b8c5d5; }
+    .btn:active { transform:translateY(1px); }
+    .btn-primary { background:#533afd; color:#fff; border-color:#533afd; }
+    .btn-primary:hover { background:#4229e8; border-color:#4229e8; }
+    .btn-danger { color:#b42318; }
+    .btn-danger:hover { background:#fff5f4; border-color:#f3c3bf; }
+    .btn-quiet { border-color:transparent; background:transparent; }
+    .btn-quiet:hover { background:#f1f4f9; border-color:transparent; }
+    .line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    @media (prefers-reduced-motion: reduce) { *,*::before,*::after { scroll-behavior:auto !important; transition:none !important; animation:none !important; } }
+  </style>
+</head>
+<body class="min-h-screen bg-canvas text-ink antialiased">
+  <header class="border-b border-line bg-white">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
+      <a href="./" class="flex items-center gap-3 rounded-md" aria-label="Rentry, inicio">
+        <img src="./favicon.svg" alt="" class="h-8 w-8">
+        <span class="text-[15px] font-semibold tracking-[-.03em]">rentry<span class="text-brand">.</span></span>
+      </a>
+      <span class="hidden text-xs text-muted sm:block">Tu biblioteca personal de páginas</span>
+      <button id="newLinkTop" class="btn btn-primary">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+        Nuevo enlace
+      </button>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-5 pb-16 pt-9 sm:px-8 sm:pt-12">
+    <section class="mb-8">
+      <p class="mb-2 text-xs font-semibold uppercase tracking-[.16em] text-brand">Biblioteca</p>
+      <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <h1 class="text-[30px] font-medium leading-tight tracking-[-.045em] sm:text-[36px]">Tus enlaces, en orden.</h1>
+          <p class="mt-2 max-w-xl text-sm leading-6 text-muted">Guarda páginas de Rentry, organiza por categorías y encuentra lo que necesitas sin perder tiempo.</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-muted">
+          <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+          <span id="storageStatus">Guardado en este navegador</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-6 grid gap-3 sm:grid-cols-3">
+      <div class="rounded-xl border border-line bg-white p-4 shadow-panel">
+        <p class="text-xs text-muted">Enlaces guardados</p>
+        <p id="statLinks" class="mt-2 text-2xl font-medium tracking-tight">0</p>
+      </div>
+      <div class="rounded-xl border border-line bg-white p-4 shadow-panel">
+        <p class="text-xs text-muted">Categorías</p>
+        <p id="statCats" class="mt-2 text-2xl font-medium tracking-tight">0</p>
+      </div>
+      <div class="rounded-xl border border-line bg-white p-4 shadow-panel">
+        <p class="text-xs text-muted">Sin categoría</p>
+        <p id="statUnsorted" class="mt-2 text-2xl font-medium tracking-tight">0</p>
+      </div>
+    </section>
+
+    <section class="rounded-2xl border border-line bg-white p-4 shadow-panel sm:p-5">
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <label class="relative min-w-0 flex-1">
+          <span class="sr-only">Buscar enlaces</span>
+          <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+          <input id="search" type="search" class="field pl-10" placeholder="Buscar por nombre, enlace, etiqueta o nota…" autocomplete="off">
+        </label>
+        <div class="flex flex-wrap gap-2">
+          <label class="sr-only" for="sort">Ordenar enlaces</label>
+          <select id="sort" class="field w-auto min-w-[155px]">
+            <option value="newest">Más recientes</option>
+            <option value="oldest">Más antiguos</option>
+            <option value="az">Nombre A–Z</option>
+            <option value="za">Nombre Z–A</option>
+          </select>
+          <button id="manageCats" class="btn">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5h18M3 12h18M3 16.5h18"/><circle cx="7" cy="7.5" r="1"/><circle cx="7" cy="12" r="1"/><circle cx="7" cy="16.5" r="1"/></svg>
+            Categorías
+          </button>
+        </div>
+      </div>
+      <div class="mt-4 border-t border-line pt-4">
+        <div class="mb-2 flex items-center justify-between gap-3">
+          <p class="text-xs font-medium text-muted">FILTRAR POR CATEGORÍA</p>
+          <button id="clearFilter" class="hidden text-xs font-medium text-brand hover:underline">Limpiar filtro</button>
+        </div>
+        <div id="categoryFilters" class="flex flex-wrap gap-2"></div>
+      </div>
+    </section>
+
+    <section class="mt-7">
+      <div class="mb-3 flex items-center justify-between gap-3">
+        <h2 class="text-sm font-semibold">Todos los enlaces <span id="resultCount" class="ml-1 font-normal text-muted">(0)</span></h2>
+        <button id="newLinkInline" class="text-xs font-medium text-brand hover:underline">Añadir enlace</button>
+      </div>
+      <div id="linkList" class="grid gap-3"></div>
+      <div id="emptyState" class="hidden rounded-2xl border border-dashed border-line bg-white px-5 py-14 text-center">
+        <div class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-soft text-brand">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 13a5 5 0 0 0 7.07 0l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15"/><path d="M14 11a5 5 0 0 0-7.07 0l-2 2a5 5 0 0 0 7.07 7.07l1.15-1.15"/></svg>
+        </div>
+        <h3 id="emptyTitle" class="mt-4 text-sm font-semibold">Todavía no hay enlaces</h3>
+        <p id="emptyText" class="mx-auto mt-1 max-w-sm text-sm text-muted">Añade tu primera página de Rentry para empezar a organizar tu biblioteca.</p>
+        <button id="emptyAction" class="btn btn-primary mt-5">Guardar primer enlace</button>
+      </div>
+    </section>
+
+    <footer class="mt-14 border-t border-line pt-5 text-xs leading-5 text-muted">
+      <p>Los datos se guardan automáticamente en el almacenamiento local de este navegador. No se envían a Rentry ni a terceros.</p>
+      <p class="mt-1">Consejo: si borras los datos del sitio o cambias de navegador/dispositivo, esta biblioteca local no se trasladará automáticamente.</p>
+    </footer>
+  </main>
+
+  <dialog id="linkDialog" class="w-[min(94vw,560px)] max-w-none rounded-2xl shadow-2xl">
+    <form id="linkForm" class="p-5 sm:p-7">
+      <div class="mb-6 flex items-start justify-between gap-4">
+        <div><p class="text-xs font-semibold uppercase tracking-[.14em] text-brand">Biblioteca Rentry</p><h2 id="linkDialogTitle" class="mt-1 text-xl font-medium tracking-tight">Nuevo enlace</h2><p class="mt-1 text-sm text-muted">Completa los datos de la página que quieres guardar.</p></div>
+        <button type="button" class="btn btn-quiet !min-h-8 !px-2" data-close="linkDialog" aria-label="Cerrar ventana">✕</button>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class="sm:col-span-2"><span class="mb-1.5 block text-xs font-medium text-muted">Nombre <span class="text-red-600">*</span></span><input id="linkName" class="field" maxlength="100" required placeholder="Ej. Documentación del proyecto"></label>
+        <label class="sm:col-span-2"><span class="mb-1.5 block text-xs font-medium text-muted">Enlace o ruta de Rentry <span class="text-red-600">*</span></span><input id="linkUrl" class="field" maxlength="300" required placeholder="rentry.co/mi-pagina o mi-pagina"><span class="mt-1 text-[11px] text-muted">Acepta rentry.co/mi-pagina o solamente mi-pagina.</span></label>
+        <label><span class="mb-1.5 block text-xs font-medium text-muted">Categoría</span><select id="linkCategory" class="field"><option value="">Sin categoría</option></select></label>
+        <label><span class="mb-1.5 block text-xs font-medium text-muted">Etiquetas</span><input id="linkTags" class="field" placeholder="ideas, trabajo, código"><span class="mt-1 text-[11px] text-muted">Separadas por comas.</span></label>
+        <label class="sm:col-span-2"><span class="mb-1.5 block text-xs font-medium text-muted">Código de edición <span class="font-normal">(opcional)</span></span><input id="linkCode" type="password" class="field" maxlength="200" autocomplete="new-password" placeholder="Se mantiene oculto en la ficha"></label>
+        <label class="sm:col-span-2"><span class="mb-1.5 block text-xs font-medium text-muted">Notas <span class="font-normal">(opcional)</span></span><textarea id="linkNotes" class="field min-h-[86px] resize-y" maxlength="1000" placeholder="Añade contexto o recordatorios…"></textarea></label>
+      </div>
+      <p id="linkError" class="mt-3 hidden text-xs text-red-600" role="alert"></p>
+      <div class="mt-6 flex flex-col-reverse justify-end gap-2 border-t border-line pt-4 sm:flex-row">
+        <button type="button" id="cancelLink" class="btn">Cancelar</button>
+        <button type="submit" class="btn btn-primary min-w-32">Guardar enlace</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="categoryDialog" class="w-[min(94vw,480px)] max-w-none rounded-2xl shadow-2xl">
+    <div class="p-5 sm:p-6">
+      <div class="mb-5 flex items-start justify-between"><div><h2 class="text-lg font-medium">Gestionar categorías</h2><p class="mt-1 text-sm text-muted">Crea, renombra o elimina tus categorías.</p></div><button class="btn btn-quiet !min-h-8 !px-2" data-close="categoryDialog" aria-label="Cerrar ventana">✕</button></div>
+      <form id="categoryForm" class="flex gap-2"><label class="min-w-0 flex-1"><span class="sr-only">Nombre de categoría</span><input id="categoryName" class="field" maxlength="50" required placeholder="Ej. Proyectos"></label><button class="btn btn-primary" type="submit">Crear</button></form>
+      <p id="categoryError" class="mt-2 hidden text-xs text-red-600" role="alert"></p>
+      <div id="categoryList" class="mt-5 divide-y divide-line"></div>
+      <p class="mt-4 text-xs leading-5 text-muted">Al eliminar una categoría, sus enlaces se conservan y pasan a «Sin categoría».</p>
+    </div>
+  </dialog>
+
+  <div id="toast" class="pointer-events-none fixed bottom-5 left-1/2 z-50 -translate-x-1/2 translate-y-2 rounded-full bg-ink px-4 py-2 text-xs text-white opacity-0 shadow-lg transition-all" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+  const KEY = "rentry-library-v2";
+  const $ = id => document.getElementById(id);
+  let state = { links: [], categories: [] };
+  let editingId = null;
+  let activeCategory = "all";
+  let toastTimer;
+
+  const makeId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const escapeText = value => String(value ?? "");
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (saved && Array.isArray(saved.links) && Array.isArray(saved.categories)) state = saved;
+    } catch { showToast("No se pudieron leer los datos guardados."); }
+    render();
+  }
+  function persist() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); $("storageStatus").textContent = "Cambios guardados"; }
+    catch { showToast("No hay espacio disponible. No se pudo guardar."); }
+  }
+  function showToast(message) {
+    const node = $("toast"); node.textContent = message;
+    node.classList.remove("opacity-0", "translate-y-2"); node.classList.add("opacity-100", "translate-y-0");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => {
+      node.classList.add("opacity-0", "translate-y-2"); node.classList.remove("opacity-100", "translate-y-0");
+    }, 2200);
+  }
+  function normalizeUrl(value) {
+    let raw = value.trim().replace(/\/raw\/?$/i, "").replace(/\/+$/, "");
+    raw = raw.replace(/^https?:\/\/(www\.)?rentry\.(co|org)\//i, "").replace(/^(www\.)?rentry\.(co|org)\//i, "");
+    raw = raw.replace(/^\/+/, "");
+    if (!raw || /[\s?#]/.test(raw) || raw.includes("..")) throw new Error("Escribe una ruta válida de Rentry.");
+    return "https://rentry.co/" + raw;
+  }
+  function safeCopy(value, success) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(value).then(() => showToast(success)).catch(() => fallbackCopy(value, success));
+    } else fallbackCopy(value, success);
+  }
+  function fallbackCopy(value, success) {
+    const input = document.createElement("textarea"); input.value = value; input.style.position = "fixed"; input.style.opacity = "0";
+    document.body.appendChild(input); input.select();
+    try { document.execCommand("copy"); showToast(success); } catch { showToast("No se pudo copiar. Selecciona el texto manualmente."); }
+    input.remove();
+  }
+  function button(label, action, extra = "") {
+    const b = document.createElement("button"); b.type = "button"; b.className = `btn ${extra}`; b.textContent = label; b.addEventListener("click", action); return b;
+  }
+  function categoryName(id) { return state.categories.find(c => c.id === id)?.name || "Sin categoría"; }
+  function renderFilters() {
+    const host = $("categoryFilters"); host.replaceChildren();
+    const filters = [{ id: "all", name: "Todas", count: state.links.length }, { id: "none", name: "Sin categoría", count: state.links.filter(l => !l.categoryId).length },
+      ...state.categories.map(c => ({ ...c, count: state.links.filter(l => l.categoryId === c.id).length }))];
+    filters.forEach(c => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "tag-button rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:border-brand hover:text-brand";
+      b.setAttribute("aria-pressed", String(activeCategory === c.id)); b.textContent = `${c.name} · ${c.count}`;
+      b.addEventListener("click", () => { activeCategory = c.id; render(); }); host.appendChild(b);
+    });
+    $("clearFilter").classList.toggle("hidden", activeCategory === "all");
+  }
+  function render() {
+    $("statLinks").textContent = state.links.length;
+    $("statCats").textContent = state.categories.length;
+    $("statUnsorted").textContent = state.links.filter(l => !l.categoryId).length;
+    renderFilters();
+    const query = $("search").value.trim().toLocaleLowerCase("es");
+    const sort = $("sort").value;
+    let rows = state.links.filter(l => {
+      if (activeCategory === "none" && l.categoryId) return false;
+      if (activeCategory !== "all" && activeCategory !== "none" && l.categoryId !== activeCategory) return false;
+      const haystack = [l.name, l.url, l.notes, ...(l.tags || []), categoryName(l.categoryId)].join(" ").toLocaleLowerCase("es");
+      return !query || haystack.includes(query);
+    });
+    rows.sort((a,b) => sort === "az" ? a.name.localeCompare(b.name, "es", { sensitivity:"base" })
+      : sort === "za" ? b.name.localeCompare(a.name, "es", { sensitivity:"base" })
+      : sort === "oldest" ? a.createdAt - b.createdAt : b.createdAt - a.createdAt);
+    $("resultCount").textContent = `(${rows.length})`;
+    const host = $("linkList"); host.replaceChildren();
+    rows.forEach(l => host.appendChild(renderLink(l)));
+    const empty = rows.length === 0;
+    $("emptyState").classList.toggle("hidden", !empty);
+    if (empty) {
+      const hasAny = state.links.length > 0;
+      $("emptyTitle").textContent = hasAny ? "No encontramos coincidencias" : "Todavía no hay enlaces";
+      $("emptyText").textContent = hasAny ? "Prueba otra búsqueda o cambia el filtro de categoría." : "Añade tu primera página de Rentry para empezar a organizar tu biblioteca.";
+      $("emptyAction").classList.toggle("hidden", hasAny);
+    }
+  }
+  function renderLink(l) {
+    const card = document.createElement("article"); card.className = "rounded-xl border border-line bg-white p-4 shadow-panel transition hover:border-slate-300 sm:p-5";
+    const top = document.createElement("div"); top.className = "flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between";
+    const left = document.createElement("div"); left.className = "min-w-0 flex-1";
+    const title = document.createElement("h3"); title.className = "break-words text-[15px] font-semibold tracking-[-.02em]"; title.textContent = l.name;
+    const anchor = document.createElement("a"); anchor.className = "mt-1 block break-all text-xs text-brand hover:underline"; anchor.href = l.url; anchor.target = "_blank"; anchor.rel = "noopener noreferrer"; anchor.textContent = l.url;
+    left.append(title, anchor); top.appendChild(left);
+    const cat = document.createElement("span"); cat.className = "w-fit shrink-0 rounded-full bg-soft px-2.5 py-1 text-[11px] font-medium text-muted"; cat.textContent = categoryName(l.categoryId); top.appendChild(cat);
+    card.appendChild(top);
+    if (l.notes) { const p = document.createElement("p"); p.className = "mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-muted"; p.textContent = l.notes; card.appendChild(p); }
+    if (l.tags?.length) {
+      const tags = document.createElement("div"); tags.className = "mt-3 flex flex-wrap gap-1.5";
+      l.tags.forEach(t => { const s = document.createElement("span"); s.className = "rounded-md border border-line px-2 py-1 text-[11px] text-muted"; s.textContent = "#" + t; tags.appendChild(s); });
+      card.appendChild(tags);
+    }
+    const meta = document.createElement("p"); meta.className = "mt-3 text-[11px] text-muted"; meta.textContent = `Guardado el ${new Date(l.createdAt).toLocaleDateString("es-PE", { day:"2-digit", month:"short", year:"numeric" })}`; card.appendChild(meta);
+    const actions = document.createElement("div"); actions.className = "mt-4 flex flex-wrap gap-2 border-t border-line pt-3";
+    actions.append(
+      button("Copiar enlace", () => safeCopy(l.url, "Enlace copiado")),
+      button("Copiar /raw", () => safeCopy(l.url + "/raw", "Enlace /raw copiado"))
+    );
+    if (l.code) {
+      let visible = false;
+      const reveal = button("Ver código", () => { visible = !visible; codeBox.classList.toggle("hidden", !visible); reveal.textContent = visible ? "Ocultar código" : "Ver código"; reveal.setAttribute("aria-expanded", String(visible)); });
+      reveal.setAttribute("aria-expanded", "false");
+      const codeBox = document.createElement("code"); codeBox.className = "hidden w-full break-all rounded-lg bg-slate-50 px-3 py-2 text-xs text-ink";
+      codeBox.textContent = l.code;
+      actions.append(reveal, button("Copiar código", () => safeCopy(l.code, "Código de edición copiado")));
+      card.appendChild(actions); card.appendChild(codeBox);
+    } else card.appendChild(actions);
+    actions.append(button("Editar", () => openLink(l.id)));
+    actions.append(button("Eliminar", () => removeLink(l.id), "btn-danger"));
+    return card;
+  }
+  function populateCategorySelect(selected = "") {
+    const select = $("linkCategory"); select.replaceChildren(new Option("Sin categoría", ""));
+    state.categories.forEach(c => select.add(new Option(c.name, c.id)));
+    select.value = selected;
+  }
+  function openLink(id = null) {
+    editingId = id;
+    const l = state.links.find(x => x.id === id) || {};
+    $("linkDialogTitle").textContent = id ? "Editar enlace" : "Nuevo enlace";
+    $("linkName").value = l.name || ""; $("linkUrl").value = l.url || "";
+    $("linkCode").value = l.code || ""; $("linkTags").value = (l.tags || []).join(", ");
+    $("linkNotes").value = l.notes || ""; $("linkError").classList.add("hidden");
+    populateCategorySelect(l.categoryId || "");
+    $("linkDialog").showModal(); $("linkName").focus();
+  }
+  function closeLink() { $("linkDialog").close(); editingId = null; $("linkForm").reset(); }
+  $("linkForm").addEventListener("submit", e => {
+    e.preventDefault();
+    try {
+      const name = $("linkName").value.trim();
+      if (!name) throw new Error("El nombre es obligatorio.");
+      const url = normalizeUrl($("linkUrl").value);
+      const data = { name, url, code: $("linkCode").value.trim(), categoryId: $("linkCategory").value,
+        tags: [...new Set($("linkTags").value.split(",").map(x => x.trim()).filter(Boolean))],
+        notes: $("linkNotes").value.trim() };
+      const wasEditing = Boolean(editingId);
+      if (wasEditing) {
+        const current = state.links.find(x => x.id === editingId);
+        Object.assign(current, data, { updatedAt: Date.now() });
+      } else state.links.unshift({ id: makeId(), ...data, createdAt: Date.now(), updatedAt: Date.now() });
+      persist(); closeLink(); render(); showToast(wasEditing ? "Enlace actualizado" : "Enlace guardado");
+    } catch (err) { $("linkError").textContent = err.message; $("linkError").classList.remove("hidden"); }
+  });
+  function removeLink(id) {
+    const l = state.links.find(x => x.id === id); if (!l) return;
+    if (!confirm(`¿Eliminar «${l.name}» del gestor? La página original de Rentry no se borra.`)) return;
+    state.links = state.links.filter(x => x.id !== id); persist(); render(); showToast("Enlace eliminado del gestor");
+  }
+  function renderCategories() {
+    const host = $("categoryList"); host.replaceChildren();
+    if (!state.categories.length) {
+      const p = document.createElement("p"); p.className = "py-5 text-center text-sm text-muted"; p.textContent = "Aún no has creado categorías."; host.appendChild(p); return;
+    }
+    state.categories.forEach(c => {
+      const row = document.createElement("div"); row.className = "flex items-center justify-between gap-3 py-3";
+      const name = document.createElement("span"); name.className = "min-w-0 break-words text-sm font-medium"; name.textContent = c.name;
+      const actions = document.createElement("div"); actions.className = "flex shrink-0 gap-1";
+      actions.append(button("Renombrar", () => renameCategory(c.id), "btn-quiet"));
+      actions.append(button("Eliminar", () => deleteCategory(c.id), "btn-quiet btn-danger"));
+      row.append(name, actions); host.appendChild(row);
+    });
+  }
+  function openCategories() { renderCategories(); $("categoryError").classList.add("hidden"); $("categoryDialog").showModal(); $("categoryName").focus(); }
+  $("categoryForm").addEventListener("submit", e => {
+    e.preventDefault(); const name = $("categoryName").value.trim();
+    if (!name) return;
+    if (state.categories.some(c => c.name.toLocaleLowerCase("es") === name.toLocaleLowerCase("es"))) {
+      $("categoryError").textContent = "Ya existe una categoría con ese nombre."; $("categoryError").classList.remove("hidden"); return;
+    }
+    state.categories.push({ id: makeId(), name }); $("categoryName").value = ""; persist(); render(); renderCategories(); showToast("Categoría creada");
+  });
+  function renameCategory(id) {
+    const c = state.categories.find(x => x.id === id); if (!c) return;
+    const next = prompt("Nuevo nombre para la categoría:", c.name); if (next === null) return;
+    const name = next.trim(); if (!name) return showToast("El nombre no puede estar vacío.");
+    if (state.categories.some(x => x.id !== id && x.name.toLocaleLowerCase("es") === name.toLocaleLowerCase("es"))) return showToast("Ya existe una categoría con ese nombre.");
+    c.name = name; persist(); render(); renderCategories(); showToast("Categoría actualizada");
+  }
+  function deleteCategory(id) {
+    const c = state.categories.find(x => x.id === id); if (!c) return;
+    if (!confirm(`¿Eliminar la categoría «${c.name}»? Los enlaces asociados se conservarán sin categoría.`)) return;
+    state.categories = state.categories.filter(x => x.id !== id);
+    state.links.forEach(l => { if (l.categoryId === id) l.categoryId = ""; });
+    if (activeCategory === id) activeCategory = "all";
+    persist(); render(); renderCategories(); showToast("Categoría eliminada");
+  }
+  $("newLinkTop").addEventListener("click", () => openLink());
+  $("newLinkInline").addEventListener("click", () => openLink());
+  $("emptyAction").addEventListener("click", () => openLink());
+  $("cancelLink").addEventListener("click", closeLink);
+  $("manageCats").addEventListener("click", openCategories);
+  $("search").addEventListener("input", render);
+  $("sort").addEventListener("change", render);
+  $("clearFilter").addEventListener("click", () => { activeCategory = "all"; render(); });
+  document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => $(b.dataset.close).close()));
+  document.querySelectorAll("dialog").forEach(d => d.addEventListener("click", e => { if (e.target === d) d.close(); }));
+  load();
+})();
+</script>
+</body>
+</html>
